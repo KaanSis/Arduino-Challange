@@ -1,205 +1,130 @@
-#include <LiquidCrystal.h>
 #include <Keypad.h>
+#include <LiquidCrystal.h>
 #include <Servo.h>
-#include "SafeState.h"
-#include "icons.h"
 
-/* Locking mechanism definitions */
-#define SERVO_PIN 6
-#define SERVO_LOCK_POS   20
-#define SERVO_UNLOCK_POS 90
-Servo lockServo;
+Servo myservo;
 
-/* Display */
-LiquidCrystal lcd(12, 11, 10, 9, 8, 7);
+LiquidCrystal lcd(A0, A1, A2, A3, A4, A5);
 
-/* Keypad setup */
-const byte KEYPAD_ROWS = 4;
-const byte KEYPAD_COLS = 4;
-byte rowPins[KEYPAD_ROWS] = {5, 4, 3, 2};
-byte colPins[KEYPAD_COLS] = {A3, A2, A1, A0};
-char keys[KEYPAD_ROWS][KEYPAD_COLS] = {
-  {'1', '2', '3', 'A'},
-  {'4', '5', '6', 'B'},
-  {'7', '8', '9', 'C'},
-  {'*', '0', '#', 'D'}
+#define Password_Lenght 5 // Give enough room for six chars + NULL char
+
+int pos = 0;    // variable to store the servo position
+
+char Data[Password_Lenght]; // 6 is the number of chars it can hold + the null char = 7
+char Master[Password_Lenght] = "1234";
+byte data_count = 0, master_count = 0;
+bool Pass_is_good;
+char customKey;
+
+const byte ROWS = 4;
+const byte COLS = 4;
+char keys[ROWS][COLS] = {
+  {'1', '2', '3'},
+  {'4', '5', '6'},
+  {'7', '8', '9'},
+  {'*', '0', '#'}
 };
+bool door = true;
 
-Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, KEYPAD_ROWS, KEYPAD_COLS);
+byte rowPins[ROWS] = {1, 2, 3, 4}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {5, 6, 7, 8}; //connect to the column pinouts of the keypad
 
-/* SafeState stores the secret code in EEPROM */
-SafeState safeState;
+Keypad customKeypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS); //initialize an instance of class NewKeypad
 
-void lock() {
-  lockServo.write(SERVO_LOCK_POS);
-  safeState.lock();
+void setup()
+{
+  pinMode(10,OUTPUT);
+  myservo.attach(9);
+  ServoClose();
+  lcd.begin(16, 2);
+  lcd.print(" Arduino Door");
+  lcd.setCursor(0, 1);
+  lcd.print("--Look project--");
+  delay(3000);
+  lcd.clear();
+
 }
 
-void unlock() {
-  lockServo.write(SERVO_UNLOCK_POS);
-}
+void loop()
+{
+  if (door == 0)
+  {
+    customKey = customKeypad.getKey();
 
-void showStartupMessage() {
-  lcd.setCursor(4, 0);
-  lcd.print("Welcome!");
-  delay(1000);
+    if (customKey == '#')
 
-  lcd.setCursor(0, 2);
-  String message = "Good Day Sir";
-  for (byte i = 0; i < message.length(); i++) {
-    lcd.print(message[i]);
-    delay(100);
-  }
-  delay(500);
-}
-
-String inputSecretCode() {
-  lcd.setCursor(5, 1);
-  lcd.print("[____]");
-  lcd.setCursor(6, 1);
-  String result = "";
-  while (result.length() < 4) {
-    char key = keypad.getKey();
-    if (key >= '0' && key <= '9') {
-      lcd.print('*');
-      result += key;
+    {
+      lcd.clear();
+      ServoClose();
+      lcd.print("  Door is close");
+      digitalWrite(10,LOW);
+      delay(3000);
+      door = 1;
     }
   }
-  return result;
+
+  else Open();
 }
 
-void showWaitScreen(int delayMillis) {
-  lcd.setCursor(2, 1);
-  lcd.print("[..........]");
-  lcd.setCursor(3, 1);
-  for (byte i = 0; i < 10; i++) {
-    delay(delayMillis);
-    lcd.print("=");
+void clearData()
+{
+  while (data_count != 0)
+  { // This can be used for any array size,
+    Data[data_count--] = 0; //clear array for new data
+  }
+  return;
+}
+
+void ServoOpen()
+{
+  for (pos = 180; pos >= 0; pos -= 5) { // goes from 0 degrees to 180 degrees
+    // in steps of 1 degree
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+    delay(15);                       // waits 15ms for the servo to reach the position
   }
 }
 
-bool setNewCode() {
-  lcd.clear();
+void ServoClose()
+{
+  for (pos = 0; pos <= 180; pos += 5) { // goes from 180 degrees to 0 degrees
+    myservo.write(pos);              // tell servo to go to position in variable 'pos'
+    delay(15);                       // waits 15ms for the servo to reach the position
+  }
+}
+
+void Open()
+{
   lcd.setCursor(0, 0);
-  lcd.print("Enter new code:");
-  String newCode = inputSecretCode();
-
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Confirm new code");
-  String confirmCode = inputSecretCode();
-
-  if (newCode.equals(confirmCode)) {
-    safeState.setCode(newCode);
-    return true;
-  } else {
-    lcd.clear();
-    lcd.setCursor(1, 0);
-    lcd.print("Code mismatch");
-    lcd.setCursor(0, 1);
-    lcd.print("Safe not locked!");
-    delay(2000);
-    return false;
-  }
-}
-
-void showUnlockMessage() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.write(ICON_UNLOCKED_CHAR);
-  lcd.setCursor(4, 0);
-  lcd.print("Unlocked!");
-  lcd.setCursor(15, 0);
-  lcd.write(ICON_UNLOCKED_CHAR);
-  delay(1000);
-}
-
-void safeUnlockedLogic() {
-  lcd.clear();
-
-  lcd.setCursor(0, 0);
-  lcd.write(ICON_UNLOCKED_CHAR);
-  lcd.setCursor(2, 0);
-  lcd.print(" # to lock");
-  lcd.setCursor(15, 0);
-  lcd.write(ICON_UNLOCKED_CHAR);
-
-  bool newCodeNeeded = true;
-
-  if (safeState.hasCode()) {
-    lcd.setCursor(0, 1);
-    lcd.print("  A = new code");
-    newCodeNeeded = false;
+  lcd.print(" Enter Password");
+  
+  customKey = customKeypad.getKey();
+  if (customKey) // makes sure a key is actually pressed, equal to (customKey != NO_KEY)
+  {
+    Data[data_count] = customKey; // store char into data array
+    lcd.setCursor(data_count, 1); // move cursor to show each new char
+    lcd.print(Data[data_count]); // print char at said cursor
+    data_count++; // increment data array by 1 to store new char, also keep track of the number of chars entered
   }
 
-  auto key = keypad.getKey();
-  while (key != 'A' && key != '#') {
-    key = keypad.getKey();
-  }
-
-  bool readyToLock = true;
-  if (key == 'A' || newCodeNeeded) {
-    readyToLock = setNewCode();
-  }
-
-  if (readyToLock) {
-    lcd.clear();
-    lcd.setCursor(5, 0);
-    lcd.write(ICON_UNLOCKED_CHAR);
-    lcd.print(" ");
-    lcd.write(ICON_RIGHT_ARROW);
-    lcd.print(" ");
-    lcd.write(ICON_LOCKED_CHAR);
-
-    safeState.lock();
-    lock();
-    showWaitScreen(100);
-  }
-}
-
-void safeLockedLogic() {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.write(ICON_LOCKED_CHAR);
-  lcd.print(" Safe Locked! ");
-  lcd.write(ICON_LOCKED_CHAR);
-
-  String userCode = inputSecretCode();
-  bool unlockedSuccessfully = safeState.unlock(userCode);
-  showWaitScreen(200);
-
-  if (unlockedSuccessfully) {
-    showUnlockMessage();
-    unlock();
-  } else {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Access Denied!");
-    showWaitScreen(1000);
-  }
-}
-
-void setup() {
-  lcd.begin(16, 2);
-  init_icons(lcd);
-
-  lockServo.attach(SERVO_PIN);
-
-  /* Make sure the physical lock is sync with the EEPROM state */
-  Serial.begin(115200);
-  if (safeState.locked()) {
-    lock();
-  } else {
-    unlock();
-  }
-
-  showStartupMessage();
-}
-
-void loop() {
-  if (safeState.locked()) {
-    safeLockedLogic();
-  } else {
-    safeUnlockedLogic();
+  if (data_count == Password_Lenght - 1) // if the array index is equal to the number of expected chars, compare data to master
+  {
+    if (!strcmp(Data, Master)) // equal to (strcmp(Data, Master) == 0)
+    {
+      lcd.clear();
+      digitalWrite(10,HIGH);
+      ServoOpen();
+      lcd.print("  Door is Open");
+      
+      door = 0;
+    }
+    else
+    {
+      lcd.clear();
+    
+      lcd.print("  Wrong Password");
+      delay(1000);
+      door = 1;
+    }
+    clearData();
   }
 }
