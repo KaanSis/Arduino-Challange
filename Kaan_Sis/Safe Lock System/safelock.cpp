@@ -37,9 +37,9 @@ void setup()
   myservo.attach(9);
   ServoClose();
   lcd.begin(16, 2);
-  lcd.print(" Arduino Door");
+  lcd.print(" Safe Lock");
   lcd.setCursor(0, 1);
-  lcd.print("--Look project--");
+  lcd.print("Welcome");
   delay(3000);
   lcd.clear();
 
