@@ -31,13 +31,13 @@ int lt = analogRead(ldrlt); // top left
 int rt = analogRead(ldrrt); // top right
 int ld = analogRead(ldrld); // down left
 int rd = analogRead(ldrrd); // down right
-int dtime = 10; int tol = 90; // dtime=diffirence time, tol=toleransi
+int dtime = 10; int tol = 90; // dtime=difference time, tol=tolerance
 int avt = (lt + rt) / 2; // average value top
 int avd = (ld + rd) / 2; // average value down
 int avl = (lt + ld) / 2; // average value left
 int avr = (rt + rd) / 2; // average value right
-int dvert = avt - avd; // check the diffirence of up and down
-int dhoriz = avl - avr;// check the diffirence og left and rigt
+int dvert = avt - avd; // check the difference of up and down
+int dhoriz = avl - avr;// check the difference og left and rigt
 
 if (-1*tol > dvert || dvert > tol) 
  {
@@ -54,7 +54,7 @@ if (-1*tol > dvert || dvert > tol)
  }
  vertical.write(servov);
  }
-if (-1*tol > dhoriz || dhoriz > tol) // check if the diffirence is in the tolerance else change horizontal angle
+if (-1*tol > dhoriz || dhoriz > tol) // check if the difference is in the tolerance else change horizontal angle
  {
  if (avl > avr)
  {
