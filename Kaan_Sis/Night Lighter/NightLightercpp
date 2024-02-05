@@ -1,19 +1,25 @@
+int led = 13;
+int photocell = A2;
+
 void setup()
 {
- Serial.begin(9600);
- pinMode(7,OUTPUT) ;
+  pinMode(led,OUTPUT);
+  pinMode(photocell,INPUT);
+  Serial.begin(9600);
 }
 
 void loop()
 {
-  int c = analogRead(A0) ;
-  Serial.println(c) ;
-  if(c<500)
-  {
-    digitalWrite(7,LOW) ; 
+  int value = analogRead(photocell);
+  
+  if(value>=900){
+    digitalWrite(led,LOW);
   }
-  else
-  {
-    digitalWrite(7,HIGH) ; 
+  else{
+    digitalWrite(led,HIGH);
   }
+  
+  Serial.println(value);
+  
+  delay(1);
 }
