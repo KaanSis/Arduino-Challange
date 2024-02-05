@@ -1,130 +1,62 @@
-#include <Keypad.h>
-#include <LiquidCrystal.h>
 #include <Servo.h>
-
-Servo myservo;
-
-LiquidCrystal lcd(A0, A1, A2, A3, A4, A5);
-
-#define Password_Lenght 5 // Give enough room for six chars + NULL char
-
-int pos = 0;    
-
-char Data[Password_Lenght]; 
-char Master[Password_Lenght] = "1234";
-byte data_count = 0, master_count = 0;
-bool Pass_is_good;
-char customKey;
-
-const byte ROWS = 4;
-const byte COLS = 4;
-char keys[ROWS][COLS] = {
-  {'1', '2', '3'},
-  {'4', '5', '6'},
-  {'7', '8', '9'},
-  {'*', '0', '#'}
-};
-bool door = true;
-
-byte rowPins[ROWS] = {1, 2, 3, 4}; 
-byte colPins[COLS] = {5, 6, 7, 8}; 
-
-Keypad customKeypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS); 
+Servo servo;
 
 void setup()
 {
-  pinMode(10,OUTPUT);
-  myservo.attach(9);
-  ServoClose();
-  lcd.begin(16, 2);
-  lcd.print(" Safe Lock");
-  lcd.setCursor(0, 1);
-  lcd.print("Welcome");
-  delay(3000);
-  lcd.clear();
-
+  pinMode(2, OUTPUT);
+  pinMode(3, OUTPUT);
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(A1, INPUT);
+  servo.attach(7);
+  Serial.begin(9600);  
 }
+
+const int SIZE = 4;
+int password[SIZE] = {0, 2, 1, 3};
+int num;
 
 void loop()
 {
-  if (door == 0)
+  for (int i = 0; i < SIZE; i++)
   {
-    customKey = customKeypad.getKey();
-
-    if (customKey == '#')
-
-    {
-      lcd.clear();
-      ServoClose();
-      lcd.print("  Door is close");
-      digitalWrite(10,LOW);
-      delay(3000);
-      door = 1;
-    }
-  }
-
-  else Open();
-}
-
-void clearData()
-{
-  while (data_count != 0)
-  {
-    Data[data_count--] = 0; 
-  }
-  return;
-}
-
-void ServoOpen()
-{
-  for (pos = 180; pos >= 0; pos -= 5) { 
-    // in steps of 1 degree
-    myservo.write(pos);              
-    delay(15);                       
-  }
-}
-
-void ServoClose()
-{
-  for (pos = 0; pos <= 180; pos += 5) { 
-    myservo.write(pos);             
-    delay(15);                       
-  }
-}
-
-void Open()
-{
-  lcd.setCursor(0, 0);
-  lcd.print(" Enter Password");
-  
-  customKey = customKeypad.getKey();
-  if (customKey) 
-  {
-    Data[data_count] = customKey; 
-    lcd.setCursor(data_count, 1); 
-    lcd.print(Data[data_count]); 
-    data_count++; 
-  }
-
-  if (data_count == Password_Lenght - 1) 
-  {
-    if (!strcmp(Data, Master)) 
-    {
-      lcd.clear();
-      digitalWrite(10,HIGH);
-      ServoOpen();
-      lcd.print("  Door is Open");
-      
-      door = 0;
-    }
-    else
-    {
-      lcd.clear();
+	servo.write(0);
+	num = map(analogRead(A1), 0, 1023, 0, 7);
+  	Serial.println(num);
     
-      lcd.print("  Wrong Password");
-      delay(1000);
-      door = 1;
-    }
-    clearData();
+ 	if (num == password[i])
+	{
+      	if (i == 1) digitalWrite(2, HIGH);
+        if (i == 2) digitalWrite(3, HIGH);
+        if (i == 3) digitalWrite(4, HIGH);
+  		if (i == 0) 
+  		{
+            digitalWrite(5, HIGH);
+    		servo.write(90);
+    		Serial.println("This case is opened");
+    		delay(5000);
+    		Serial.println("This case is closed");
+          
+          digitalWrite(2, LOW);
+          digitalWrite(3, LOW);
+          digitalWrite(4, LOW);
+          digitalWrite(5, LOW);
+          servo.write(0);
+
+  		}
+    Serial.print("Code ");
+    Serial.println(i);
+	}
+  
+	else
+	{
+		i = 0;  
+  		Serial.println("The password is wrong");
+        digitalWrite(2, LOW);
+        digitalWrite(3, LOW);
+        digitalWrite(4, LOW);
+        digitalWrite(5, LOW);
+	}
+  	delay(2000);
   }
 }
